@@ -1,0 +1,181 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+
+import '../excel/excel_learner.dart';
+import '../l10n.dart';
+import '../models.dart';
+import '../store.dart';
+import '../theme.dart';
+import '../widgets.dart';
+
+class ProductEditScreen extends StatefulWidget {
+  final Product? product;
+  const ProductEditScreen({super.key, this.product});
+  @override
+  State<ProductEditScreen> createState() => _ProductEditScreenState();
+}
+
+class _ProductEditScreenState extends State<ProductEditScreen> {
+  final st = AppStore.instance;
+  late final name = TextEditingController(text: widget.product?.name ?? '');
+  late final price = TextEditingController(text: _n(widget.product?.price));
+  late final cost = TextEditingController(text: _n(widget.product?.cost));
+  late final full = TextEditingController(text: widget.product == null ? '' : '${st.stockOf(widget.product!).full}');
+  late final empty = TextEditingController(text: widget.product == null ? '' : '${st.stockOf(widget.product!).empty}');
+  late final min = TextEditingController(text: widget.product?.minStockManual?.toString() ?? '');
+  late String unit = widget.product?.unit ?? 'Box';
+  late bool returnable = widget.product?.returnable ?? false;
+  late int color = widget.product?.colorIndex ?? st.products.length % AppColors.products.length;
+
+  static String _n(double? v) => (v == null || v == 0) ? '' : v.toStringAsFixed(v == v.roundToDouble() ? 0 : 2);
+  int _i(TextEditingController c) => int.tryParse(c.text.trim()) ?? 0;
+  double _d(TextEditingController c) => double.tryParse(c.text.trim()) ?? 0;
+
+  Future<void> _save() async {
+    if (name.text.trim().isEmpty) {
+      toast(context, t('productName'), error: true);
+      return;
+    }
+    final isNew = widget.product == null;
+    final p = widget.product ?? Product(id: newId(), name: '');
+    p
+      ..name = name.text.trim()
+      ..unit = unit
+      ..returnable = returnable
+      ..price = _d(price)
+      ..cost = _d(cost)
+      ..colorIndex = color
+      ..minStockManual = min.text.trim().isEmpty ? null : _i(min);
+    if (isNew) {
+      p.openingFull = _i(full);
+      p.openingEmpty = _i(empty);
+      await st.upsertProduct(p);
+    } else {
+      // stock typed here = counted stock now. Fix difference with a "count fix" entry.
+      final info = st.stockOf(p);
+      final df = _i(full) - info.full;
+      if (df != 0) {
+        st.entries.add(Entry(id: newId(), date: DateTime.now(), type: EntryType.adjust, productId: p.id, qty: df));
+      }
+      p.openingEmpty += _i(empty) - info.empty;
+      await st.upsertProduct(p);
+    }
+    if (mounted) Navigator.pop(context);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final numF = [FilteringTextInputFormatter.allow(RegExp(r'[\d\.]'))];
+    final preview = Product(id: 'x', name: name.text, unit: unit, returnable: returnable, colorIndex: color);
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(widget.product == null ? t('addProduct') : t('editProduct')),
+        actions: [
+          if (widget.product != null)
+            IconButton(
+              icon: const Icon(Icons.delete_outline_rounded),
+              onPressed: () async {
+                if (await confirm(context, '${t('delete')} ${widget.product!.name}?', yes: t('delete'))) {
+                  await st.deleteProduct(widget.product!);
+                  if (context.mounted) Navigator.of(context).popUntil((r) => r.isFirst);
+                }
+              },
+            ),
+        ],
+      ),
+      body: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 110), children: [
+        Center(child: ProductAvatar(preview, size: 84)),
+        const SizedBox(height: 10),
+        SizedBox(
+          height: 44,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            itemCount: AppColors.products.length,
+            separatorBuilder: (_, __) => const SizedBox(width: 10),
+            itemBuilder: (_, i) => GestureDetector(
+              onTap: () => setState(() => color = i),
+              child: CircleAvatar(
+                radius: 20,
+                backgroundColor: AppColors.products[i],
+                child: color == i ? const Icon(Icons.check, color: Colors.white) : null,
+              ),
+            ),
+          ),
+        ),
+        const SizedBox(height: 16),
+        TextField(
+          controller: name,
+          style: const TextStyle(fontSize: 20),
+          decoration: InputDecoration(labelText: t('productName'), hintText: '20 Litre Jar'),
+          onChanged: (v) => setState(() {
+            if (widget.product == null && ExcelLearner.looksReturnable(v, '')) {
+              returnable = true;
+              unit = 'Jar';
+            }
+          }),
+        ),
+        const SizedBox(height: 12),
+        Wrap(spacing: 8, children: [
+          for (final u in const ['Jar', 'Box', 'Bottle', 'Packet'])
+            ChoiceChip(
+              label: Text(u, style: const TextStyle(fontSize: 16)),
+              selected: unit == u,
+              onSelected: (_) => setState(() => unit = u),
+            ),
+        ]),
+        const SizedBox(height: 6),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          value: returnable,
+          onChanged: (v) => setState(() => returnable = v),
+          title: Text(t('returnable'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w600)),
+          secondary: const Icon(Icons.recycling_rounded, color: AppColors.water),
+        ),
+        const SizedBox(height: 6),
+        Row(children: [
+          Expanded(child: TextField(controller: price, keyboardType: TextInputType.number, inputFormatters: numF, decoration: InputDecoration(labelText: t('price')))),
+          const SizedBox(width: 12),
+          Expanded(child: TextField(controller: cost, keyboardType: TextInputType.number, inputFormatters: numF, decoration: InputDecoration(labelText: t('cost')))),
+        ]),
+        const SizedBox(height: 12),
+        Row(children: [
+          Expanded(
+            child: TextField(
+              controller: full,
+              keyboardType: TextInputType.number,
+              inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+              style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+              decoration: InputDecoration(labelText: t('openingFull')),
+            ),
+          ),
+          if (returnable) ...[
+            const SizedBox(width: 12),
+            Expanded(
+              child: TextField(
+                controller: empty,
+                keyboardType: TextInputType.number,
+                inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w800),
+                decoration: InputDecoration(labelText: t('openingEmpty')),
+              ),
+            ),
+          ],
+        ]),
+        const SizedBox(height: 12),
+        TextField(
+          controller: min,
+          keyboardType: TextInputType.number,
+          inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+          decoration: InputDecoration(labelText: t('minManual'), prefixIcon: const Icon(Icons.flag_rounded)),
+        ),
+      ]),
+      bottomSheet: SafeArea(
+        child: Container(
+          color: AppColors.bg,
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
+          child: ElevatedButton.icon(onPressed: _save, icon: const Icon(Icons.check_rounded, size: 30), label: Text(t('save'))),
+        ),
+      ),
+    );
+  }
+}

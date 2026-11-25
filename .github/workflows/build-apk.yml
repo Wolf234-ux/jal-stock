@@ -1,0 +1,47 @@
+name: Build Android APK
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Create Android folder (first time only)
+        run: |
+          if [ ! -d android ]; then
+            flutter create --org com.wolftech --project-name jal_stock --platforms android .
+            rm -f test/widget_test.dart
+          fi
+          # App name on the phone
+          sed -i 's/android:label="jal_stock"/android:label="JalStock"/' android/app/src/main/AndroidManifest.xml
+
+      - run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze --no-fatal-infos --no-fatal-warnings
+        continue-on-error: true
+
+      - name: Tests (Excel learning + stock rules)
+        run: flutter test
+
+      - name: Build APK
+        run: flutter build apk --release
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JalStock-apk
+          path: build/app/outputs/flutter-apk/app-release.apk
