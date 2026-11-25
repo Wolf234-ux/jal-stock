@@ -252,14 +252,31 @@ class AppStore extends ChangeNotifier {
     await changed();
   }
 
+  /// Adds the ₹10 / ₹20 counter bottles if the shop does not have them yet.
+  Future<int> addSmallBottles() async {
+    var added = 0;
+    for (final p in [
+      Product(id: newId(), name: '₹10 Bottle (500 ml)', unit: 'Bottle', price: 10, cost: 6.5, packSize: 24, colorIndex: 4),
+      Product(id: newId(), name: '₹20 Bottle (1 Litre)', unit: 'Bottle', price: 20, cost: 13, packSize: 12, colorIndex: 5),
+    ]) {
+      if (productByName(p.name) == null && !products.any((x) => x.unit == 'Bottle' && x.price == p.price)) {
+        products.add(p);
+        added++;
+      }
+    }
+    if (added > 0) await changed();
+    return added;
+  }
+
   Future<void> loadStarterProducts() async {
     if (products.isNotEmpty) return;
     products.addAll([
       Product(id: newId(), name: '20 Litre Jar', unit: 'Jar', returnable: true, price: 40, cost: 15, colorIndex: 0),
+      Product(id: newId(), name: '₹10 Bottle (500 ml)', unit: 'Bottle', price: 10, cost: 6.5, packSize: 24, colorIndex: 4),
+      Product(id: newId(), name: '₹20 Bottle (1 Litre)', unit: 'Bottle', price: 20, cost: 13, packSize: 12, colorIndex: 5),
       Product(id: newId(), name: '1 Litre Bottle (Box of 12)', unit: 'Box', price: 120, cost: 85, colorIndex: 1),
       Product(id: newId(), name: '500 ml Bottle (Box of 24)', unit: 'Box', price: 140, cost: 100, colorIndex: 2),
       Product(id: newId(), name: '250 ml Bottle (Box of 48)', unit: 'Box', price: 180, cost: 130, colorIndex: 3),
-      Product(id: newId(), name: '200 ml Glass Pouch (Box)', unit: 'Box', price: 90, cost: 60, colorIndex: 4),
     ]);
     await changed();
   }

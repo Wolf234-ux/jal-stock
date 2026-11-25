@@ -34,6 +34,13 @@ class _EntryScreenState extends State<EntryScreen> {
   bool amountTouched = false;
   bool paidTouched = false;
   bool saving = false;
+  bool inBoxes = false; // count in boxes instead of single bottles
+
+  int get pack => product?.packSize ?? 1;
+  bool get canUseBoxes =>
+      pack > 1 && (type == EntryType.sale || type == EntryType.stockIn || type == EntryType.damage);
+  /// real number of pieces this entry moves
+  int get pieces => (canUseBoxes && inBoxes) ? qty * pack : qty;
 
   EntryType get type => widget.type;
   bool get needsProduct => type != EntryType.payment;
@@ -53,13 +60,14 @@ class _EntryScreenState extends State<EntryScreen> {
     if (productId == null && choices.isNotEmpty && type != EntryType.damage) productId = choices.first.id;
     if (type == EntryType.adjust && product != null) qty = st.stockOf(product!).full;
     if (type == EntryType.payment) qty = 0;
+    inBoxes = type == EntryType.stockIn; // stock usually comes in boxes
     _autoMoney();
   }
 
   void _autoMoney() {
     final p = product;
     if (type == EntryType.sale && p != null) {
-      final bill = p.price * qty;
+      final bill = p.price * pieces;
       if (!amountTouched) amountCtl.text = bill > 0 ? bill.toStringAsFixed(0) : '';
       if (!paidTouched) {
         // walk-in pays cash; regular customers may pay later
@@ -67,7 +75,7 @@ class _EntryScreenState extends State<EntryScreen> {
       }
     }
     if (type == EntryType.stockIn && p != null && !amountTouched) {
-      final c = p.cost * qty;
+      final c = p.cost * pieces;
       amountCtl.text = c > 0 ? c.toStringAsFixed(0) : '';
     }
   }
@@ -79,7 +87,7 @@ class _EntryScreenState extends State<EntryScreen> {
   Future<void> _save() async {
     if (saving) return;
     final p = product;
-    var q = qty;
+    var q = pieces;
     if (type == EntryType.adjust && p != null) q = qty - st.stockOf(p).full;
     final e = Entry(
       id: newId(),
@@ -186,7 +194,7 @@ class _EntryScreenState extends State<EntryScreen> {
               )
             else
               SizedBox(
-                height: 128,
+                height: 148,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: choices.length,
@@ -198,11 +206,12 @@ class _EntryScreenState extends State<EntryScreen> {
                       onTap: () => setState(() {
                         productId = x.id;
                         if (type == EntryType.adjust) qty = st.stockOf(x).full;
+                        if (x.packSize <= 1) inBoxes = false;
                         _autoMoney();
                       }),
                       child: AnimatedContainer(
                         duration: const Duration(milliseconds: 180),
-                        width: 124,
+                        width: 128,
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           color: Colors.white,
@@ -218,6 +227,8 @@ class _EntryScreenState extends State<EntryScreen> {
                               textAlign: TextAlign.center,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(fontSize: 14, fontWeight: sel ? FontWeight.w900 : FontWeight.w600)),
+                          if (x.price > 0)
+                            Text('₹${money(x.price)}', style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w800)),
                         ]),
                       ),
                     );
@@ -260,6 +271,20 @@ class _EntryScreenState extends State<EntryScreen> {
               child: Padding(
                 padding: const EdgeInsets.all(16),
                 child: Column(children: [
+                  if (canUseBoxes) ...[
+                    SegmentedButton<bool>(
+                      segments: [
+                        ButtonSegment(value: false, icon: const Icon(Icons.local_drink_rounded), label: Text(t('bottles'), style: const TextStyle(fontSize: 16))),
+                        ButtonSegment(value: true, icon: const Icon(Icons.inventory_2_rounded), label: Text(t('boxes'), style: const TextStyle(fontSize: 16))),
+                      ],
+                      selected: {inBoxes},
+                      onSelectionChanged: (v) => setState(() {
+                        inBoxes = v.first;
+                        _autoMoney();
+                      }),
+                    ),
+                    const SizedBox(height: 14),
+                  ],
                   QtyPicker(
                     value: qty,
                     min: type == EntryType.adjust ? 0 : 1,
@@ -269,6 +294,11 @@ class _EntryScreenState extends State<EntryScreen> {
                       _autoMoney();
                     }),
                   ),
+                  if (canUseBoxes && inBoxes)
+                    Padding(
+                      padding: const EdgeInsets.only(top: 8),
+                      child: Text(t('equalsBottles', {'n': pieces}), style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: color)),
+                    ),
                   if (type == EntryType.adjust && info != null)
                     Padding(
                       padding: const EdgeInsets.only(top: 8),

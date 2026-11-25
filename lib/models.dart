@@ -28,6 +28,7 @@ class Product {
   int openingEmpty;
   int? minStockManual; // if user/Excel set it, rules use this
   int colorIndex;
+  int packSize; // bottles in one box (1 = sold/bought one by one only)
 
   Product({
     required this.id,
@@ -40,11 +41,13 @@ class Product {
     this.openingEmpty = 0,
     this.minStockManual,
     this.colorIndex = 0,
+    this.packSize = 1,
   });
 
   Map<String, dynamic> toJson() => {
         'id': id,
         'name': name,
+        'packSize': packSize,
         'unit': unit,
         'returnable': returnable,
         'price': price,
@@ -66,6 +69,7 @@ class Product {
         openingEmpty: ((j['openingEmpty'] ?? 0) as num).toInt(),
         minStockManual: (j['minStockManual'] as num?)?.toInt(),
         colorIndex: ((j['colorIndex'] ?? 0) as num).toInt(),
+        packSize: ((j['packSize'] ?? 1) as num).toInt(),
       );
 }
 

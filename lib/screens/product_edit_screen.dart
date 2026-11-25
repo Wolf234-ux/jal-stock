@@ -26,6 +26,28 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
   late String unit = widget.product?.unit ?? 'Box';
   late bool returnable = widget.product?.returnable ?? false;
   late int color = widget.product?.colorIndex ?? st.products.length % AppColors.products.length;
+  late final pack = TextEditingController(
+      text: (widget.product?.packSize ?? 1) > 1 ? '${widget.product!.packSize}' : '');
+  int kind = -1;
+
+  // Item types the owner can pick: (label key, icon, unit, returnable, pack, sample name)
+  static const kinds = [
+    ('kindJar', Icons.water_drop_rounded, 'Jar', true, 1, '20 Litre Jar'),
+    ('kindBigBottle', Icons.local_drink_rounded, 'Bottle', false, 12, '₹20 Bottle (1 Litre)'),
+    ('kindSmallBottle', Icons.local_drink_outlined, 'Bottle', false, 24, '₹10 Bottle (500 ml)'),
+    ('kindBox', Icons.inventory_2_rounded, 'Box', false, 1, '1 Litre Box (12)'),
+    ('kindPouch', Icons.local_mall_rounded, 'Packet', false, 1, '₹2 Water Pouch'),
+  ];
+
+  void _pickKind(int i) {
+    final k = kinds[i];
+    setState(() {
+      kind = i;
+      unit = k.$3;
+      returnable = k.$4;
+      pack.text = k.$5 > 1 ? '${k.$5}' : '';
+    });
+  }
 
   static String _n(double? v) => (v == null || v == 0) ? '' : v.toStringAsFixed(v == v.roundToDouble() ? 0 : 2);
   int _i(TextEditingController c) => int.tryParse(c.text.trim()) ?? 0;
@@ -45,7 +67,8 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
       ..price = _d(price)
       ..cost = _d(cost)
       ..colorIndex = color
-      ..minStockManual = min.text.trim().isEmpty ? null : _i(min);
+      ..minStockManual = min.text.trim().isEmpty ? null : _i(min)
+      ..packSize = (unit == 'Bottle' || unit == 'Packet') && _i(pack) > 1 ? _i(pack) : 1;
     if (isNew) {
       p.openingFull = _i(full);
       p.openingEmpty = _i(empty);
@@ -84,6 +107,41 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
         ],
       ),
       body: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 110), children: [
+        if (widget.product == null) ...[
+          Text(t('whatKind'), style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
+          const SizedBox(height: 10),
+          GridView.count(
+            crossAxisCount: 3,
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            mainAxisSpacing: 10,
+            crossAxisSpacing: 10,
+            childAspectRatio: .95,
+            children: [
+              for (var i = 0; i < kinds.length; i++)
+                Material(
+                  color: kind == i ? AppColors.water : Colors.white,
+                  borderRadius: BorderRadius.circular(18),
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(18),
+                    onTap: () => _pickKind(i),
+                    child: Padding(
+                      padding: const EdgeInsets.all(8),
+                      child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                        Icon(kinds[i].$2, size: 36, color: kind == i ? Colors.white : AppColors.water),
+                        const SizedBox(height: 6),
+                        Text(t(kinds[i].$1),
+                            textAlign: TextAlign.center,
+                            maxLines: 2,
+                            style: TextStyle(fontSize: 14.5, fontWeight: FontWeight.w800, color: kind == i ? Colors.white : null)),
+                      ]),
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          const SizedBox(height: 18),
+        ],
         Center(child: ProductAvatar(preview, size: 84)),
         const SizedBox(height: 10),
         SizedBox(
@@ -106,7 +164,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
         TextField(
           controller: name,
           style: const TextStyle(fontSize: 20),
-          decoration: InputDecoration(labelText: t('productName'), hintText: '20 Litre Jar'),
+          decoration: InputDecoration(labelText: t('productName'), hintText: kind >= 0 ? kinds[kind].$6 : '20 Litre Jar'),
           onChanged: (v) => setState(() {
             if (widget.product == null && ExcelLearner.looksReturnable(v, '')) {
               returnable = true;
@@ -161,6 +219,15 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
             ),
           ],
         ]),
+        if (unit == 'Bottle' || unit == 'Packet') ...[
+          const SizedBox(height: 12),
+          TextField(
+            controller: pack,
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            decoration: InputDecoration(labelText: t('packSize'), hintText: '24', prefixIcon: const Icon(Icons.inventory_2_outlined)),
+          ),
+        ],
         const SizedBox(height: 12),
         TextField(
           controller: min,

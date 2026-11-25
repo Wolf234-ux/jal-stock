@@ -206,6 +206,13 @@ class ExcelLearner {
 
   static bool looksReturnable(String name, String unit) => _jarWords.hasMatch('$name $unit');
 
+  /// "Box of 24", "24 pcs", "x24" -> 24 (only for single bottles sold loose)
+  static int packFromName(String name) {
+    final m = RegExp(r'(?:box of|case of|x|pack of)\s*(\d{1,3})', caseSensitive: false).firstMatch(name);
+    final n = m == null ? null : int.tryParse(m.group(1)!);
+    return (n != null && n > 1) ? n : 1;
+  }
+
   static String guessUnit(String name, bool returnable) {
     final n = name.toLowerCase();
     if (returnable) return 'Jar';
@@ -554,6 +561,7 @@ class ExcelLearner {
       if (existing == null) {
         final p = Product(
           id: newId(),
+          packSize: RegExp(r'(bottle|pcs|piece|nang|નંગ|नग)', caseSensitive: false).hasMatch(ip.unit ?? '') ? packFromName(ip.name) : 1,
           name: ip.name,
           unit: ip.unit ?? 'Box',
           returnable: ip.returnable,

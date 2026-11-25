@@ -67,6 +67,8 @@ class ProductCard extends StatelessWidget {
               Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
                 Text('${i.full}', style: TextStyle(fontSize: 36, fontWeight: FontWeight.w900, color: lc, height: 1)),
                 Text(p.unit, style: const TextStyle(color: Colors.blueGrey)),
+                if (p.packSize > 1 && i.full >= p.packSize)
+                  Text('≈ ${i.full ~/ p.packSize} ${t('boxes')}', style: const TextStyle(color: Colors.blueGrey, fontSize: 13)),
               ]),
             ]),
             const SizedBox(height: 12),
