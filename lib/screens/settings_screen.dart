@@ -5,6 +5,8 @@ import '../store.dart';
 import '../theme.dart';
 import '../widgets.dart';
 
+const appVersion = String.fromEnvironment('APP_VERSION', defaultValue: 'dev');
+
 class SettingsScreen extends StatefulWidget {
   const SettingsScreen({super.key});
   @override
@@ -121,7 +123,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             label: Text(t('resetAll'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
           ),
           const SizedBox(height: 20),
-          const Center(child: Text('JalStock v1.0', style: TextStyle(color: Colors.blueGrey))),
+          const Center(child: Text('JalStock · Version $appVersion', style: TextStyle(color: Colors.blueGrey, fontSize: 16, fontWeight: FontWeight.w700))),
         ]),
       );
     });

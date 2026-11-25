@@ -4,6 +4,9 @@ on:
   push:
   workflow_dispatch:
 
+permissions:
+  contents: write   # to publish each version as a GitHub Release
+
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -39,21 +42,55 @@ jobs:
       - name: Tests (Excel learning + stock rules)
         run: flutter test
 
+      - name: Version number (Version 1, 2, 3 ...)
+        run: echo "V=$(( ${{ github.run_number }} - 3 ))" >> $GITHUB_ENV
+
+      # Same signing key for every version, so a new version installs
+      # over the old one and the shop keeps its data.
+      - name: Signing key
+        env:
+          KEYSTORE: ${{ secrets.JALSTOCK_KEYSTORE }}
+        run: |
+          mkdir -p ~/.android
+          if [ -n "$KEYSTORE" ]; then
+            echo "$KEYSTORE" | base64 -d > ~/.android/debug.keystore
+            echo "Using fixed JalStock signing key"
+          else
+            echo "::warning::JALSTOCK_KEYSTORE secret not set - this APK cannot update older versions"
+          fi
+
       - name: Build small APKs (one per phone type)
         run: |
-          flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/symbols
-          ls -lh build/app/outputs/flutter-apk/*.apk
+          flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/symbols \
+            --build-name=1.$V.0 --build-number=$((V + 100)) --dart-define=APP_VERSION=$V
+          cd build/app/outputs/flutter-apk
+          mv app-arm64-v8a-release.apk JalStock-v$V-arm64.apk
+          mv app-armeabi-v7a-release.apk JalStock-v$V-armv7-old-phones.apk
+          ls -lh *.apk
 
-      # Almost every phone sold since ~2017 uses this one
       - uses: actions/upload-artifact@v4
         with:
-          name: JalStock-arm64 (most phones)
-          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          name: JalStock-v${{ env.V }}-arm64 (most phones)
+          path: build/app/outputs/flutter-apk/JalStock-v${{ env.V }}-arm64.apk
           compression-level: 0
 
-      # Only for very old / cheap 32-bit phones
       - uses: actions/upload-artifact@v4
         with:
-          name: JalStock-armv7 (old phones)
-          path: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+          name: JalStock-v${{ env.V }}-armv7 (old phones)
+          path: build/app/outputs/flutter-apk/JalStock-v${{ env.V }}-armv7-old-phones.apk
           compression-level: 0
+
+      - name: Publish as GitHub Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ env.V }}
+          name: JalStock Version ${{ env.V }}
+          body: |
+            **Download `JalStock-v${{ env.V }}-arm64.apk`** (works on almost every phone).
+            Use the armv7 file only on very old phones.
+
+            Changes: ${{ github.event.head_commit.message }}
+          files: |
+            build/app/outputs/flutter-apk/JalStock-v${{ env.V }}-arm64.apk
+            build/app/outputs/flutter-apk/JalStock-v${{ env.V }}-armv7-old-phones.apk

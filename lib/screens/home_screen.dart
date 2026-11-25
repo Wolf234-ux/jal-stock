@@ -59,6 +59,11 @@ class HomeScreen extends StatelessWidget {
                       style: const TextStyle(color: Colors.white, fontSize: 24, fontWeight: FontWeight.w900),
                     ),
                   ),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                    decoration: BoxDecoration(color: Colors.white.withValues(alpha: .18), borderRadius: BorderRadius.circular(20)),
+                    child: const Text('v$appVersion', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w800)),
+                  ),
                   IconButton(
                     onPressed: () => _go(context, const SettingsScreen()),
                     icon: const Icon(Icons.settings_rounded, color: Colors.white, size: 28),
