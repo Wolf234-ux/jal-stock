@@ -1,4 +1,4 @@
-name: Build Android APK
+name: Build Android APK + iPhone web app
 
 on:
   push:
@@ -6,6 +6,8 @@ on:
 
 permissions:
   contents: write   # to publish each version as a GitHub Release
+  pages: write      # to publish the web app (iPhone version)
+  id-token: write
 
 jobs:
   build:
@@ -32,6 +34,16 @@ jobs:
           # App name on the phone
           sed -i 's/android:label="jal_stock"/android:label="JalStock"/' android/app/src/main/AndroidManifest.xml
           bash tool/fix_android.sh
+
+      - name: Create web folder (iPhone / browser version)
+        run: |
+          if [ ! -d web ]; then
+            flutter create --org com.wolftech --project-name jal_stock --platforms web .
+            rm -f test/widget_test.dart
+          fi
+          # name + colours shown when added to the iPhone home screen
+          sed -i 's/jal_stock/JalStock/g; s/#0175C2/#0A3D62/g' web/manifest.json web/index.html
+          sed -i 's/"description": "[^"]*"/"description": "Stock management for water bottle and jar suppliers"/' web/manifest.json
 
       - run: flutter pub get
 
@@ -68,6 +80,15 @@ jobs:
           mv app-armeabi-v7a-release.apk JalStock-v$V-armv7-old-phones.apk
           ls -lh *.apk
 
+      - name: Build web app (iPhone version)
+        run: |
+          flutter build web --release --base-href "/${{ github.event.repository.name }}/" --dart-define=APP_VERSION=$V
+          cp build/web/index.html build/web/404.html
+
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: build/web
+
       - uses: actions/upload-artifact@v4
         with:
           name: JalStock-v${{ env.V }}-arm64 (most phones)
@@ -90,7 +111,21 @@ jobs:
             **Download `JalStock-v${{ env.V }}-arm64.apk`** (works on almost every phone).
             Use the armv7 file only on very old phones.
 
+            **iPhone:** open https://${{ github.repository_owner }}.github.io/${{ github.event.repository.name }}/ in Safari → Share → Add to Home Screen.
+
             Changes: ${{ github.event.head_commit.message }}
           files: |
             build/app/outputs/flutter-apk/JalStock-v${{ env.V }}-arm64.apk
             build/app/outputs/flutter-apk/JalStock-v${{ env.V }}-armv7-old-phones.apk
+
+  # Publishes the iPhone / browser version to GitHub Pages
+  deploy-web:
+    needs: build
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4

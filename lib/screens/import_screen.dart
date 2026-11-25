@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:file_picker/file_picker.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 
 import '../excel/excel_learner.dart';
@@ -41,7 +42,7 @@ class _ImportScreenState extends State<ImportScreen> {
     });
     try {
       List<int>? bytes = f.bytes;
-      if (bytes == null && f.path != null) bytes = await File(f.path!).readAsBytes();
+      if (bytes == null && !kIsWeb && f.path != null) bytes = await File(f.path!).readAsBytes();
       if (bytes == null) throw UnsupportedFileException('unknown');
       final sheets = XlsxReader.readAny(bytes, f.name);
       final p = ExcelLearner.learn(sheets, st.settings);

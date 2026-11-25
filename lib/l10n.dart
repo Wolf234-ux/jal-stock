@@ -171,6 +171,8 @@ const Map<String, Map<String, String>> _s = {
     'errNoItems': 'No items yet. First add your items (jar, bottle…).',
     'errName': 'Please write the item / customer name',
     'errNameTaken': 'This name is already added',
+    'backupTitle': 'Save a backup now',
+    'backupSub': 'Tap to download Excel. Keep it on WhatsApp / Drive.',
   },
   'gu': {
     'appName': 'જલસ્ટોક',
@@ -332,6 +334,8 @@ const Map<String, Map<String, String>> _s = {
     'errNoItems': 'હજુ કોઈ માલ નથી. પહેલા તમારો માલ ઉમેરો (જાર, બોટલ…).',
     'errName': 'મહેરબાની કરી નામ લખો',
     'errNameTaken': 'આ નામ પહેલેથી ઉમેરેલું છે',
+    'backupTitle': 'હમણાં બેકઅપ સાચવો',
+    'backupSub': 'Excel ડાઉનલોડ કરવા દબાવો. WhatsApp / Drive પર રાખો.',
   },
   'hi': {
     'appName': 'जलस्टॉक',
@@ -493,5 +497,7 @@ const Map<String, Map<String, String>> _s = {
     'errNoItems': 'अभी कोई माल नहीं है। पहले अपना माल जोड़ें (जार, बोतल…)।',
     'errName': 'कृपया नाम लिखें',
     'errNameTaken': 'यह नाम पहले से जुड़ा है',
+    'backupTitle': 'अभी बैकअप सेव करें',
+    'backupSub': 'Excel डाउनलोड करने के लिए दबाएँ। WhatsApp / Drive पर रखें।',
   },
 };

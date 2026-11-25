@@ -1,5 +1,7 @@
 import 'dart:io';
+import 'dart:typed_data';
 
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:intl/intl.dart';
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
@@ -24,16 +26,22 @@ const customerHeader = ['Customer', 'Phone', 'Area', 'Jars With Customer', 'Pend
 const entryHeader = ['Date', 'Type', 'Item', 'Customer', 'Qty', 'Empty Back', 'Amount', 'Paid', 'Note'];
 
 class ExcelExport {
-  static Future<File> _write(String baseName, XlsxWriter w) async {
-    final dir = await getTemporaryDirectory();
-    final stamp = DateFormat('yyyy-MM-dd_HHmm').format(DateTime.now());
-    final f = File('${dir.path}/${baseName}_$stamp.xlsx');
-    await f.writeAsBytes(w.encode(), flush: true);
-    return f;
-  }
+  static const _mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 
-  static Future<void> _share(File f) async {
-    await Share.shareXFiles([XFile(f.path, mimeType: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')]);
+  /// Phone: saves a file and opens the share sheet (WhatsApp, Drive, Email…).
+  /// Web / iPhone Safari: shares or downloads the file from memory.
+  static Future<void> _send(String baseName, XlsxWriter w) async {
+    final stamp = DateFormat('yyyy-MM-dd_HHmm').format(DateTime.now());
+    final name = '${baseName}_$stamp.xlsx';
+    final bytes = Uint8List.fromList(w.encode());
+    if (kIsWeb) {
+      await Share.shareXFiles([XFile.fromData(bytes, name: name, mimeType: _mime)]);
+      return;
+    }
+    final dir = await getTemporaryDirectory();
+    final f = File('${dir.path}/$name');
+    await f.writeAsBytes(bytes, flush: true);
+    await Share.shareXFiles([XFile(f.path, mimeType: _mime)]);
   }
 
   /// Full backup / report: Stock, Customers, Entries, Summary.
@@ -82,7 +90,9 @@ class ExcelExport {
           e.note.isEmpty ? null : e.note,
         ],
     ]);
-    await _share(await _write('JalStock_Report', w));
+    await _send('JalStock_Report', w);
+    st.settings.lastBackup = DateTime.now();
+    await st.changed();
   }
 
   /// Blank format the shop owner can fill and upload.
@@ -103,6 +113,6 @@ class ExcelExport {
       entryHeader,
       [DateFormat('yyyy-MM-dd').format(DateTime.now()), 'Sale', '20 Litre Jar', 'Ramesh Tea Stall', 5, 3, 200, 200, null],
     ]);
-    await _share(await _write('JalStock_Format', w));
+    await _send('JalStock_Format', w);
   }
 }

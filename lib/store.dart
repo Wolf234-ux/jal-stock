@@ -4,6 +4,7 @@ import 'dart:math';
 
 import 'package:flutter/foundation.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 import 'models.dart';
 import 'rules.dart';
@@ -26,16 +27,25 @@ class AppStore extends ChangeNotifier {
   final Map<String, CustomerInfo> _cust = {};
   List<Alert> alerts = [];
 
-  File? _file;
+  File? _file; // phone app: data in a file
+  SharedPreferences? _prefs; // web app (iPhone Safari): data in the browser
+  static const _webKey = 'jalstock_data';
   bool loaded = false;
 
   // ---------------------------------------------------------------- load/save
   Future<void> load() async {
     try {
-      final dir = await getApplicationDocumentsDirectory();
-      _file = File('${dir.path}/jalstock_data.json');
-      if (await _file!.exists()) {
-        final j = jsonDecode(await _file!.readAsString()) as Map<String, dynamic>;
+      String? raw;
+      if (kIsWeb) {
+        _prefs = await SharedPreferences.getInstance();
+        raw = _prefs!.getString(_webKey);
+      } else {
+        final dir = await getApplicationDocumentsDirectory();
+        _file = File('${dir.path}/jalstock_data.json');
+        if (await _file!.exists()) raw = await _file!.readAsString();
+      }
+      if (raw != null && raw.isNotEmpty) {
+        final j = jsonDecode(raw) as Map<String, dynamic>;
         settings = Settings.fromJson((j['settings'] ?? {}) as Map<String, dynamic>);
         products
           ..clear()
@@ -66,7 +76,7 @@ class AppStore extends ChangeNotifier {
   }
 
   Future<void> _writeNow() async {
-    if (_file == null) return;
+    if (_file == null && _prefs == null) return;
     final data = jsonEncode({
       'version': 1,
       'settings': settings.toJson(),
@@ -74,6 +84,10 @@ class AppStore extends ChangeNotifier {
       'customers': customers.map((e) => e.toJson()).toList(),
       'entries': entries.map((e) => e.toJson()).toList(),
     });
+    if (_prefs != null) {
+      await _prefs!.setString(_webKey, data);
+      return;
+    }
     // write to temp then rename, so a crash never corrupts data
     final tmp = File('${_file!.path}.tmp');
     await tmp.writeAsString(data, flush: true);

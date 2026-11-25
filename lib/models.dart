@@ -169,6 +169,7 @@ class Settings {
   bool autoMinStock; // learn minimum stock from sales
   int jarReminderDays; // remind if customer keeps jars this long
   bool onboarded;
+  DateTime? lastBackup;
 
   Settings({
     this.lang = 'en',
@@ -178,6 +179,7 @@ class Settings {
     this.autoMinStock = true,
     this.jarReminderDays = 10,
     this.onboarded = false,
+    this.lastBackup,
   });
 
   Map<String, dynamic> toJson() => {
@@ -188,6 +190,7 @@ class Settings {
         'autoMinStock': autoMinStock,
         'jarReminderDays': jarReminderDays,
         'onboarded': onboarded,
+        'lastBackup': lastBackup?.toIso8601String(),
       };
 
   factory Settings.fromJson(Map<String, dynamic> j) => Settings(
@@ -198,6 +201,7 @@ class Settings {
         autoMinStock: (j['autoMinStock'] ?? true) as bool,
         jarReminderDays: ((j['jarReminderDays'] ?? 10) as num).toInt(),
         onboarded: (j['onboarded'] ?? false) as bool,
+        lastBackup: j['lastBackup'] == null ? null : DateTime.tryParse(j['lastBackup'] as String),
       );
 }
 

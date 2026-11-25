@@ -1,4 +1,7 @@
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
+
+import '../excel/export.dart';
 
 import '../l10n.dart';
 import '../models.dart';
@@ -94,6 +97,25 @@ class HomeScreen extends StatelessWidget {
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
             sliver: SliverToBoxAdapter(child: _AlertsCard(alerts: st.alerts, onOpenStock: () => _go(context, const StockScreen()))),
           ),
+          // Web / iPhone: data lives in the browser, so remind to keep an Excel backup
+          if (kIsWeb &&
+              st.products.isNotEmpty &&
+              (st.settings.lastBackup == null || DateTime.now().difference(st.settings.lastBackup!).inDays >= 7))
+            SliverPadding(
+              padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+              sliver: SliverToBoxAdapter(
+                child: Card(
+                  color: const Color(0xFFFFF4E0),
+                  child: ListTile(
+                    contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    leading: const Icon(Icons.cloud_download_rounded, color: AppColors.near, size: 34),
+                    title: Text(t('backupTitle'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w800)),
+                    subtitle: Text(t('backupSub')),
+                    onTap: () => ExcelExport.fullReport(st),
+                  ),
+                ),
+              ),
+            ),
           SliverPadding(
             padding: const EdgeInsets.all(16),
             sliver: SliverGrid.count(
