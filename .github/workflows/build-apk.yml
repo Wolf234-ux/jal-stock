@@ -39,10 +39,21 @@ jobs:
       - name: Tests (Excel learning + stock rules)
         run: flutter test
 
-      - name: Build APK
-        run: flutter build apk --release
+      - name: Build small APKs (one per phone type)
+        run: |
+          flutter build apk --release --split-per-abi --obfuscate --split-debug-info=build/symbols
+          ls -lh build/app/outputs/flutter-apk/*.apk
 
+      # Almost every phone sold since ~2017 uses this one
       - uses: actions/upload-artifact@v4
         with:
-          name: JalStock-apk
-          path: build/app/outputs/flutter-apk/app-release.apk
+          name: JalStock-arm64 (most phones)
+          path: build/app/outputs/flutter-apk/app-arm64-v8a-release.apk
+          compression-level: 0
+
+      # Only for very old / cheap 32-bit phones
+      - uses: actions/upload-artifact@v4
+        with:
+          name: JalStock-armv7 (old phones)
+          path: build/app/outputs/flutter-apk/app-armeabi-v7a-release.apk
+          compression-level: 0
