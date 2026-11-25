@@ -28,6 +28,7 @@ jobs:
           fi
           # App name on the phone
           sed -i 's/android:label="jal_stock"/android:label="JalStock"/' android/app/src/main/AndroidManifest.xml
+          bash tool/fix_android.sh
 
       - run: flutter pub get
 
