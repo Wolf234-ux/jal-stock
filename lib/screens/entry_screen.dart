@@ -107,8 +107,7 @@ class _EntryScreenState extends State<EntryScreen> {
     }
     final err = StockRules.hardError(st, e);
     if (err != null) {
-      HapticFeedback.heavyImpact();
-      toast(context, t(err), error: true);
+      await _explain(err, p);
       return;
     }
     final warn = StockRules.softWarning(st, e);
@@ -119,6 +118,40 @@ class _EntryScreenState extends State<EntryScreen> {
     if (!mounted) return;
     await _successDialog(p);
     if (mounted) Navigator.pop(context);
+  }
+
+  /// Clear message + a button that fixes the problem.
+  Future<void> _explain(String err, Product? p) async {
+    final info = p == null ? null : st.stockOf(p);
+    switch (err) {
+      case 'errNotEnoughStock':
+        await showProblem(
+          context,
+          '${t('errNotEnoughStock')}\n\n${t('inStock', {'n': info?.full ?? 0})}',
+          actionLabel: t('addStockNow'),
+          onAction: () => Navigator.pushReplacement(
+              context, MaterialPageRoute(builder: (_) => EntryScreen(type: EntryType.stockIn, productId: p?.id))),
+        );
+        break;
+      case 'errNotEnoughEmpty':
+        await showProblem(context, '${t('errNotEnoughEmpty')}\n\n${t('emptyInGodown', {'n': info?.empty ?? 0})}');
+        break;
+      case 'errPickProduct':
+        await showProblem(
+          context,
+          st.products.isEmpty ? t('errNoItems') : t('errPickProduct'),
+          actionLabel: st.products.isEmpty ? t('addProduct') : null,
+          onAction: st.products.isEmpty
+              ? () => Navigator.push(context, MaterialPageRoute(builder: (_) => const ProductEditScreen()))
+              : null,
+        );
+        break;
+      case 'errPickCustomer':
+        await showProblem(context, t('errPickCustomer'), actionLabel: t('pickCustomer'), onAction: _pickCustomer);
+        break;
+      default:
+        await showProblem(context, t(err));
+    }
   }
 
   Future<void> _successDialog(Product? p) async {
@@ -181,7 +214,7 @@ class _EntryScreenState extends State<EntryScreen> {
           backgroundColor: color,
           title: Row(children: [Icon(entryIcon(type)), const SizedBox(width: 10), Text(entryLabel(type))]),
         ),
-        body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 120), children: [
+        body: ListView(padding: const EdgeInsets.fromLTRB(16, 8, 16, 24), children: [
           if (needsProduct) ...[
             SectionTitle(t('pickProduct')),
             if (choices.isEmpty)
@@ -194,7 +227,7 @@ class _EntryScreenState extends State<EntryScreen> {
               )
             else
               SizedBox(
-                height: 148,
+                height: 172,
                 child: ListView.separated(
                   scrollDirection: Axis.horizontal,
                   itemCount: choices.length,
@@ -229,6 +262,16 @@ class _EntryScreenState extends State<EntryScreen> {
                               style: TextStyle(fontSize: 14, fontWeight: sel ? FontWeight.w900 : FontWeight.w600)),
                           if (x.price > 0)
                             Text('₹${money(x.price)}', style: TextStyle(fontSize: 13, color: color, fontWeight: FontWeight.w800)),
+                          const Spacer(),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: AppColors.level(st.stockOf(x).level).withValues(alpha: .12),
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                            child: Text('${st.stockOf(x).full}',
+                                style: TextStyle(fontSize: 13, fontWeight: FontWeight.w900, color: AppColors.level(st.stockOf(x).level))),
+                          ),
                         ]),
                       ),
                     );
@@ -337,18 +380,7 @@ class _EntryScreenState extends State<EntryScreen> {
           const SizedBox(height: 12),
           TextField(controller: noteCtl, decoration: InputDecoration(labelText: t('note'), prefixIcon: const Icon(Icons.edit_note_rounded))),
         ]),
-        bottomSheet: SafeArea(
-          child: Container(
-            color: AppColors.bg,
-            padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-            child: ElevatedButton.icon(
-              style: ElevatedButton.styleFrom(backgroundColor: color),
-              onPressed: saving ? null : _save,
-              icon: const Icon(Icons.check_rounded, size: 30),
-              label: Text(t('save')),
-            ),
-          ),
-        ),
+        bottomNavigationBar: SaveBar(onPressed: saving ? null : _save, color: color),
       );
     });
   }

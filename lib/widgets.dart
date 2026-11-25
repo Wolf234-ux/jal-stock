@@ -158,6 +158,72 @@ class EmptyState extends StatelessWidget {
       );
 }
 
+/// Big, simple dialog for a problem, with an optional fix button.
+Future<void> showProblem(BuildContext context, String message, {String? actionLabel, VoidCallback? onAction}) {
+  HapticFeedback.heavyImpact();
+  return showDialog(
+    context: context,
+    builder: (c) => Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(28)),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(24, 28, 24, 20),
+        child: Column(mainAxisSize: MainAxisSize.min, children: [
+          Container(
+            width: 76,
+            height: 76,
+            decoration: BoxDecoration(color: AppColors.low.withValues(alpha: .12), shape: BoxShape.circle),
+            child: const Icon(Icons.info_rounded, color: AppColors.low, size: 46),
+          ),
+          const SizedBox(height: 16),
+          Text(message, textAlign: TextAlign.center, style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w700, height: 1.35)),
+          const SizedBox(height: 22),
+          if (actionLabel != null && onAction != null) ...[
+            ElevatedButton(
+              onPressed: () {
+                Navigator.pop(c);
+                onAction();
+              },
+              child: Text(actionLabel),
+            ),
+            const SizedBox(height: 8),
+          ],
+          TextButton(
+            onPressed: () => Navigator.pop(c),
+            child: Text(t('okGotIt'), style: const TextStyle(fontSize: 17, fontWeight: FontWeight.w700)),
+          ),
+        ]),
+      ),
+    ),
+  );
+}
+
+/// Sticky bottom bar with the big SAVE button.
+class SaveBar extends StatelessWidget {
+  final VoidCallback? onPressed;
+  final Color color;
+  final String? label;
+  const SaveBar({super.key, required this.onPressed, this.color = AppColors.water, this.label});
+  @override
+  Widget build(BuildContext context) => Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: .08), blurRadius: 16, offset: const Offset(0, -4))],
+        ),
+        child: SafeArea(
+          top: false,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 12),
+            child: ElevatedButton.icon(
+              style: ElevatedButton.styleFrom(backgroundColor: color),
+              onPressed: onPressed,
+              icon: const Icon(Icons.check_rounded, size: 30),
+              label: Text(label ?? t('save')),
+            ),
+          ),
+        ),
+      );
+}
+
 String alertText(Alert a) {
   final st = AppStore.instance;
   final p = st.productById(a.productId);

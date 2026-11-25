@@ -189,17 +189,18 @@ Future<String?> editCustomer(BuildContext context, [Customer? existing]) async {
   final area = TextEditingController(text: existing?.area ?? '');
   final jars = TextEditingController(text: existing == null || existing.openingJars == 0 ? '' : '${existing.openingJars}');
   final due = TextEditingController(text: existing == null || existing.openingDue == 0 ? '' : existing.openingDue.toStringAsFixed(0));
+  String? nameError;
   return showModalBottomSheet<String>(
     context: context,
     isScrollControlled: true,
     showDragHandle: true,
-    builder: (c) => Padding(
+    builder: (c) => StatefulBuilder(builder: (c, setSheet) => Padding(
       padding: EdgeInsets.fromLTRB(16, 0, 16, MediaQuery.of(c).viewInsets.bottom + 16),
       child: SingleChildScrollView(
         child: Column(mainAxisSize: MainAxisSize.min, children: [
           Text(existing == null ? t('addCustomer') : t('editCustomer'), style: const TextStyle(fontSize: 21, fontWeight: FontWeight.w800)),
           const SizedBox(height: 14),
-          TextField(controller: name, autofocus: existing == null, textCapitalization: TextCapitalization.words, style: const TextStyle(fontSize: 19), decoration: InputDecoration(labelText: t('customerName'), prefixIcon: const Icon(Icons.person_rounded))),
+          TextField(controller: name, autofocus: existing == null, textCapitalization: TextCapitalization.words, style: const TextStyle(fontSize: 19), onChanged: (_) { if (nameError != null) setSheet(() => nameError = null); }, decoration: InputDecoration(labelText: t('customerName'), errorText: nameError, prefixIcon: const Icon(Icons.person_rounded))),
           const SizedBox(height: 10),
           TextField(controller: phone, keyboardType: TextInputType.phone, decoration: InputDecoration(labelText: t('phone'), prefixIcon: const Icon(Icons.call_rounded))),
           const SizedBox(height: 10),
@@ -228,7 +229,10 @@ Future<String?> editCustomer(BuildContext context, [Customer? existing]) async {
               child: ElevatedButton(
                 style: ElevatedButton.styleFrom(backgroundColor: _teal),
                 onPressed: () async {
-                  if (name.text.trim().isEmpty) return;
+                  if (name.text.trim().isEmpty) {
+                    setSheet(() => nameError = t('errName'));
+                    return;
+                  }
                   final cu = existing ?? Customer(id: newId(), name: '');
                   cu
                     ..name = name.text.trim()
@@ -245,7 +249,7 @@ Future<String?> editCustomer(BuildContext context, [Customer? existing]) async {
           ]),
         ]),
       ),
-    ),
+    )),
   );
 }
 

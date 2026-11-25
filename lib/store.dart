@@ -55,7 +55,17 @@ class AppStore extends ChangeNotifier {
     notifyListeners();
   }
 
-  Future<void> _save() async {
+  Future<void> _saveChain = Future.value();
+
+  /// Saves run one after another (never two at once), and never crash the app.
+  Future<void> _save() {
+    _saveChain = _saveChain.then((_) => _writeNow()).catchError((Object e) {
+      debugPrint('Save failed: $e');
+    });
+    return _saveChain;
+  }
+
+  Future<void> _writeNow() async {
     if (_file == null) return;
     final data = jsonEncode({
       'version': 1,

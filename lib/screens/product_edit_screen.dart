@@ -29,6 +29,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
   late final pack = TextEditingController(
       text: (widget.product?.packSize ?? 1) > 1 ? '${widget.product!.packSize}' : '');
   int kind = -1;
+  String? nameError;
 
   // Item types the owner can pick: (label key, icon, unit, returnable, pack, sample name)
   static const kinds = [
@@ -55,7 +56,12 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
 
   Future<void> _save() async {
     if (name.text.trim().isEmpty) {
-      toast(context, t('productName'), error: true);
+      setState(() => nameError = t('errName'));
+      return;
+    }
+    final same = st.productByName(name.text.trim());
+    if (same != null && same.id != widget.product?.id) {
+      setState(() => nameError = t('errNameTaken'));
       return;
     }
     final isNew = widget.product == null;
@@ -83,7 +89,9 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
       p.openingEmpty += _i(empty) - info.empty;
       await st.upsertProduct(p);
     }
-    if (mounted) Navigator.pop(context);
+    if (!mounted) return;
+    toast(context, t('saved'));
+    Navigator.pop(context);
   }
 
   @override
@@ -106,7 +114,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
             ),
         ],
       ),
-      body: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 110), children: [
+      body: ListView(padding: const EdgeInsets.fromLTRB(16, 16, 16, 24), children: [
         if (widget.product == null) ...[
           Text(t('whatKind'), style: const TextStyle(fontSize: 19, fontWeight: FontWeight.w800)),
           const SizedBox(height: 10),
@@ -164,8 +172,14 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
         TextField(
           controller: name,
           style: const TextStyle(fontSize: 20),
-          decoration: InputDecoration(labelText: t('productName'), hintText: kind >= 0 ? kinds[kind].$6 : '20 Litre Jar'),
+          decoration: InputDecoration(
+            labelText: t('productName'),
+            hintText: kind >= 0 ? kinds[kind].$6 : '20 Litre Jar',
+            errorText: nameError,
+            errorStyle: const TextStyle(fontSize: 15, fontWeight: FontWeight.w700),
+          ),
           onChanged: (v) => setState(() {
+            nameError = null;
             if (widget.product == null && ExcelLearner.looksReturnable(v, '')) {
               returnable = true;
               unit = 'Jar';
@@ -236,13 +250,7 @@ class _ProductEditScreenState extends State<ProductEditScreen> {
           decoration: InputDecoration(labelText: t('minManual'), prefixIcon: const Icon(Icons.flag_rounded)),
         ),
       ]),
-      bottomSheet: SafeArea(
-        child: Container(
-          color: AppColors.bg,
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 12),
-          child: ElevatedButton.icon(onPressed: _save, icon: const Icon(Icons.check_rounded, size: 30), label: Text(t('save'))),
-        ),
-      ),
+      bottomNavigationBar: SaveBar(onPressed: _save),
     );
   }
 }
